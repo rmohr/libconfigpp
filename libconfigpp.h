@@ -894,12 +894,12 @@ private:
         int indexOf(const basic_setting &child) const
         {
             typename std::vector<value_ptr>::const_iterator it=m_properties.begin();
-            for(; it != m_properties.end(); ++it)
+            for(int index = 0; it != m_properties.end(); ++it, index++)
             {
                 if (child == **it)
-                    return true;
+                    return index;
             }
-            return false;
+            return -1;
         }
 
         size_t size() const
@@ -1031,6 +1031,17 @@ private:
         {
             const basic_setting& setting = at(index);
             m_mapping.erase(setting.name());
+        }
+
+        int indexOf(const basic_setting &child) const
+        {
+            typename std::map<string_type, value_ptr>::const_iterator it=m_mapping.begin();
+            for(int index = 0; it != m_mapping.end(); ++it, index++)
+            {
+                if (child == *it->second)
+                    return index;
+            }
+            return -1;
         }
 
         size_t size() const
