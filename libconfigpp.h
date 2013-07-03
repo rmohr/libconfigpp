@@ -134,13 +134,19 @@ public:
     }
 
     const std::string& file() const
-    { return m_file; }
+    {
+        return m_file;
+    }
 
     size_t line() const
-    { return m_line; }
+    {
+        return m_line;
+    }
 
     size_t offset() const
-    { return m_offset;}
+    {
+        return m_offset;
+    }
 
 private:
     std::string m_file;
@@ -246,10 +252,14 @@ public:
     virtual ~basic_setting() {}
 
     string_type name() const
-    { return m_name; }
+    {
+        return m_name;
+    }
 
     const char* getName() const
-    { return m_name.c_str(); }
+    {
+        return m_name.c_str();
+    }
 
     template <typename T>
     operator T () const
@@ -329,7 +339,7 @@ public:
         m_value->remove(position);
     }
 
-    string_type& path() const
+    string_type path() const
     {
         string_type path;
         if(m_parent) {
