@@ -155,6 +155,9 @@ private:
 };
 
 template<typename charT>
+class basic_config;
+
+template<typename charT>
 class basic_setting
 {
 public:
@@ -172,67 +175,38 @@ public:
         TypeGroup
     };
 
-    explicit basic_setting(const string_type& name)
-        : m_name(name),
-          m_type(TypeGroup),
-          m_parent(0),
-          m_value(new _basic_setting_container(this))
+    enum Format {
+        FormatHex,
+        FormatDefault
+    };
+
+    basic_setting& operator=(bool value)
     {
+        m_value->assignValue(value);
+        return *this;
     }
 
-    template<typename T>
-    basic_setting(const string_type& name, const T& value)
-        : m_name(name),
-          m_type(_deduce_scalar_type(value)),
-          m_parent(0),
-          m_value(new _basic_setting_scalar<T>(value))
+    basic_setting& operator=(int value)
     {
+        m_value->assignValue(value);
+        return *this;
     }
 
-    basic_setting(const string_type& name, const basic_setting& value)
-        : m_name(name),
-          m_type(TypeGroup),
-          m_parent(0),
-          m_value(new _basic_setting_container(this))
+    basic_setting& operator=(long value)
     {
-        m_value->add(value);
+        m_value->assignValue(value);
+        return *this;
     }
 
-    template<typename T>
-    basic_setting(const string_type &name, const std::vector<T>& values)
-        : m_name(name),
-          m_type(_deduce_scalar_type<T>(0) != TypeArray ? TypeArray : TypeArray ),
-          m_parent(0),
-          m_value(new _basic_setting_list(this))
+    basic_setting& operator=(float value)
     {
-        for(typename std::vector<T>::const_iterator it = values.begin(); it != values.end(); ++it) {
-            m_value->add(basic_setting(*it));
-        }
+        m_value->assignValue(value);
+        return *this;
     }
 
-    basic_setting(const string_type &name, const std::vector<basic_setting>& values)
-        : m_name(name),
-          m_type(TypeList),
-          m_parent(0),
-          m_value(new _basic_setting_list(this, values))
+    basic_setting& operator=(const string_type& value)
     {
-    }
-
-    basic_setting(const basic_setting& other)
-        : m_name(other.m_name),
-          m_type(other.m_type),
-          m_parent(0),
-          m_value(other.m_value->clone(this))
-    {
-    }
-
-    basic_setting& operator =(const basic_setting& other)
-    {
-        if (this != &other) {
-            m_name = other.m_name;
-            m_type = other.m_type;
-            m_value.reset(other.m_value->clone(this));
-        }
+        m_value->assignValue(value);
         return *this;
     }
 
@@ -249,44 +223,80 @@ public:
         return false;
     }
 
-    virtual ~basic_setting() {}
-
-    string_type name() const
+    operator bool () const
     {
-        return m_name;
-    }
-
-    const char* getName() const
-    {
-        return m_name.c_str();
-    }
-
-    template <typename T>
-    operator T () const
-    {
-        T result;
+        bool result;
         m_value->lookupValue(result);
         return result;
     }
 
-    template<typename T>
-    basic_setting& operator=(const T& value)
+    operator int () const
     {
-        m_type = _deduce_scalar_type(value);
-        if (isScalar()) {
-            m_value.reset(new _basic_setting_scalar<T>(value));
-        }
-        return *this;
+        int result;
+        m_value->lookupValue(result);
+        return result;
     }
 
-    template<typename T>
-    basic_setting& operator[](const T index)
+    operator unsigned () const
+    {
+        unsigned result;
+        m_value->lookupValue(result);
+        return result;
+    }
+
+    operator long () const
+    {
+        long result;
+        m_value->lookupValue(result);
+        return result;
+    }
+
+    operator unsigned long () const
+    {
+        unsigned long result;
+        m_value->lookupValue(result);
+        return result;
+    }
+
+    operator float () const
+    {
+        float result;
+        m_value->lookupValue(result);
+        return result;
+    }
+
+    operator double () const
+    {
+        double result;
+        m_value->lookupValue(result);
+        return result;
+    }
+
+    operator string_type () const
+    {
+        string_type result;
+        m_value->lookupValue(result);
+        return result;
+    }
+
+    virtual ~basic_setting() {}
+
+    basic_setting& operator[](const char * index)
     {
         return _at(index);
     }
 
-    template<typename T>
-    const basic_setting& operator[](const T index) const
+    basic_setting& operator[](const string_type& index)
+    {
+        return _at(index);
+    }
+
+    const basic_setting& operator[](const char * index) const
+    {
+        return _at(index);
+    }
+
+    const basic_setting& operator[](const string_type& index) const
     {
         return _at(index);
     }
@@ -303,35 +313,100 @@ public:
         return m_value->at(index);
     }
 
-    template <typename T>
-    bool lookupValue(const string_type& path, T& value) const
+    bool lookupValue(const string_type& path, bool& value) const
     {
         try {
-            const basic_setting& s = _at(path);
-            value = s;
+            value = _at(path);
             return true;
         } catch (std::exception&) {
             return false;
         }
     }
 
-    template<typename T>
-    basic_setting& add(const string_type& name, const T& value)
+    bool lookupValue(const string_type& path, int& value) const
     {
-        basic_setting setting(name, value);
-        m_value->add(setting);
-        return setting;
+        try {
+            value = _at(path);
+            return true;
+        } catch (std::exception&) {
+            return false;
+        }
     }
 
-    basic_setting& add(const basic_setting& setting)
+    bool lookupValue(const string_type& path, unsigned& value) const
     {
-        return m_value->add(setting);
+        try {
+            value = _at(path);
+            return true;
+        } catch (std::exception&) {
+            return false;
+        }
+    }
+
+    bool lookupValue(const string_type& path, long& value) const
+    {
+        try {
+            value = _at(path);
+            return true;
+        } catch (std::exception&) {
+            return false;
+        }
+    }
+
+    bool lookupValue(const string_type& path, unsigned long& value) const
+    {
+        try {
+            value = _at(path);
+            return true;
+        } catch (std::exception&) {
+            return false;
+        }
+    }
+
+    bool lookupValue(const string_type& path, float& value) const
+    {
+        try {
+            value = _at(path);
+            return true;
+        } catch (std::exception&) {
+            return false;
+        }
+    }
+
+    bool lookupValue(const string_type& path, double& value) const
+    {
+        try {
+            value = _at(path);
+            return true;
+        } catch (std::exception&) {
+            return false;
+        }
+    }
+
+    bool lookupValue(const string_type& path, string_type& value) const
+    {
+        try {
+            value = static_cast<string_type>(_at(path));
+            return true;
+        } catch (std::exception&) {
+            return false;
+        }
+    }
+
+    basic_setting& add(Type type)
+    {
+        return m_value->add(basic_setting(string_type(), type));
+    }
+
+    basic_setting& add(const string_type &name, Type type)
+    {
+        return m_value->add(basic_setting(name, type));
     }
 
     void remove(const string_type& path)
     {
         _check_path(path);
-        _at(_parent(path))->remove(_leaf(path));
+        _at(_parent(path)).m_value->remove(_leaf(path));
     }
 
     void remove(size_t position)
@@ -339,26 +414,16 @@ public:
         m_value->remove(position);
     }
 
-    string_type path() const
+    string_type getName() const
     {
-        string_type path;
-        if(m_parent) {
-            path += m_parent->path();
-        }
-
-        if (path.size() > 0) {
-            path += '.';
-        }
-
-        path += m_name;
-        return path;
+        return m_name;
     }
 
     string_type getPath() const
     {
         string_type path;
         if(m_parent) {
-            path += m_parent->path();
+            path += m_parent->getPath();
         }
 
         if (path.size() > 0) {
@@ -369,32 +434,18 @@ public:
         return path;
     }
 
-    const basic_setting& parent() const
-    {
-        return *m_parent;
-    }
-
-    basic_setting& parent()
-    {
-        return *m_parent;
-    }
-
     const basic_setting& getParent() const
     {
+        if(!m_parent)
+            throw _not_found_ex("parent");
         return *m_parent;
     }
 
     basic_setting& getParent()
     {
+        if(!m_parent)
+            throw _not_found_ex("parent");
         return *m_parent;
-    }
-
-    int index() const
-    {
-        if(m_parent) {
-            return m_parent->indexOf(*this);
-        }
-        return -1;
     }
 
     int getIndex() const
@@ -405,14 +456,19 @@ public:
         return -1;
     }
 
-    Type type() const
+    Type getType() const
     {
         return m_type;
     }
 
-    Type getType() const
+    Format getFormat() const
     {
-        return m_type;
+        return m_value->format();
+    }
+
+    void setFormat(const Format& f)
+    {
+        m_value->set_format(f);
     }
 
     bool exists(const string_type& path) const
@@ -422,11 +478,6 @@ public:
     }
 
     size_t getLength() const
-    {
-        return m_value->size();
-    }
-
-    size_t size() const
     {
         return m_value->size();
     }
@@ -480,17 +531,7 @@ public:
         return m_file.c_str();
     }
 
-    const string_type& source_file() const
-    {
-        return m_file;
-    }
-
     int getSourceLine() const
-    {
-        return m_line;
-    }
-
-    size_t source_line() const
     {
         return m_line;
     }
@@ -498,6 +539,50 @@ public:
     template<typename T>
     friend std::ostream& operator<<(std::ostream &o, const basic_setting<T>& rhs);
 protected:
+
+    basic_setting(const string_type &name, const Type& type = TypeGroup)
+        : m_name(name),
+          m_type(type),
+          m_parent(0)
+    {
+        switch (type) {
+        case TypeBoolean:
+            m_value.reset(new _basic_setting_scalar<bool>());
+            break;
+        case TypeInt:
+            m_value.reset(new _basic_setting_scalar<int>());
+            break;
+        case TypeInt64:
+            m_value.reset(new _basic_setting_scalar<long>());
+            break;
+        case TypeFloat:
+            m_value.reset(new _basic_setting_scalar<float>());
+            break;
+        case TypeString:
+            m_value.reset(new _basic_setting_scalar<string_type>());
+            break;
+        case TypeArray:
+            m_value.reset(new _basic_setting_array(this));
+            break;
+        case TypeList:
+            m_value.reset(new _basic_setting_list(this));
+            break;
+        case TypeGroup:
+            m_value.reset(new _basic_setting_container(this));
+            break;
+        default:
+            throw _type_ex("Unknown type");
+        }
+    }
+
+    basic_setting(const basic_setting& other)
+        : m_name(other.m_name),
+          m_type(other.m_type),
+          m_parent(0),
+          m_value(other.m_value->clone(this))
+    {
+    }
+
     basic_setting(const string_type &name, const std::vector<basic_setting>& values, Type type)
         : m_name(name),
           m_type(type),
@@ -505,6 +590,21 @@ protected:
           m_value(new _basic_setting_list(this, values))
     {
         BOOST_ASSERT(type == TypeList || type == TypeArray);
+    }
+
+    basic_setting& operator =(const basic_setting& other)
+    {
+        if (this != &other) {
+            m_name = other.m_name;
+            m_type = other.m_type;
+            m_value.reset(other.m_value->clone(this));
+        }
+        return *this;
+    }
+
+    basic_setting& add(const basic_setting& setting)
+    {
+        return m_value->add(setting);
     }
 
     string_type m_file;
@@ -524,21 +624,21 @@ private:
         if (_long_path(path)) {
             return path.substr(path.find_first_of('.')+1);
         }
-        return "";
+        return string_type();
     }
 
     string_type _parent(const string_type& path) const
     {
         if(_long_path(path)) {
-            return path.substr(path.substr(0, path.find_last_of('.')));
+            return path.substr(0, path.find_last_of('.'));
         }
-        return "";
+        return string_type();
     }
 
     string_type _leaf(const string_type& path) const
     {
         if(_long_path(path)) {
-            return path.substr(path.substr(path.find_last_of('.')+1));
+            return path.substr(path.find_last_of('.')+1);
         }
         return path;
     }
@@ -562,11 +662,11 @@ private:
             string_type remote = _remote(path);
             if(_convert_index(path, &index)) {
                 if(m_value->exists(index)) {
-                    return m_value->at(index)->_exists(remote);
+                    return m_value->at(index)._exists(remote);
                 }
             } else {
                 if (m_value->exists(local)) {
-                    return m_value->at(local)->_exists(remote);
+                    return m_value->at(local)._exists(remote);
                 }
             }
         }
@@ -618,7 +718,7 @@ private:
             } else {
                 string_type local = _local(path);
                 string_type remote = _remote(path);
-                if(_convert_index(local, index)) {
+                if(_convert_index(local, &index)) {
                     return m_value->at(index)._at(remote);
                 } else {
                     return m_value->at(local)._at(remote);
@@ -697,8 +797,18 @@ private:
             throw _type_ex("converion not implemented");
         }
 
+        virtual void assignValue(bool) {
+            throw _type_ex("converion not supported");
+
+        }
+
         virtual void lookupValue(int&) {
             throw _type_ex("converion not implemented");
+        }
+
+        virtual void assignValue(int) {
+            throw _type_ex("converion not supported");
+
         }
 
         virtual void lookupValue(unsigned int&) {
@@ -709,6 +819,11 @@ private:
             throw _type_ex("converion not implemented");
         }
 
+        virtual void assignValue(long) {
+            throw _type_ex("converion not supported");
+
+        }
+
         virtual void lookupValue(unsigned long&) {
             throw _type_ex("converion not implemented");
         }
@@ -717,12 +832,22 @@ private:
             throw _type_ex("converion not implemented");
         }
 
+        virtual void assignValue(float) {
+            throw _type_ex("converion not supported");
+
+        }
+
         virtual void lookupValue(double&) {
             throw _type_ex("converion not implemented");
         }
 
         virtual void lookupValue(string_type&) {
             throw _type_ex("converion not implemented");
+        }
+
+        virtual void assignValue(const string_type&) {
+            throw _type_ex("converion not supported");
+
         }
 
         virtual basic_setting& at(const string_type& property)
@@ -769,10 +894,21 @@ private:
         {
             return 0;
         }
+
+        virtual Format format() const
+        {
+            return FormatDefault;
+        }
+
+        virtual void set_format(Format)
+        {
+
+        }
     };
 
     class _basic_setting_list : public _basic_setting
     {
+    protected:
         _basic_setting_list(const _basic_setting_list&) {}
         _basic_setting_list& operator=(const _basic_setting_list& other)
         { return *this; }
@@ -780,6 +916,7 @@ private:
     public:
         typedef basic_setting<char_type> value_type;
         typedef boost::shared_ptr<value_type> value_ptr;
+        friend class basic_config<char_type>;
 
         _basic_setting_list(basic_setting* container,
                             const std::vector<value_type>& values = std::vector<value_type>())
@@ -793,7 +930,9 @@ private:
             }
         }
 
-        _basic_setting* clone(basic_setting *new_container)
+        virtual ~_basic_setting_list() {}
+
+        virtual _basic_setting* clone(basic_setting *new_container)
         {
             _basic_setting_list* item = new _basic_setting_list(new_container);
             for(size_t i=0; i<m_properties.size(); i++) {
@@ -817,44 +956,23 @@ private:
             return false;
         }
 
-        void print(std::ostream& o, size_t level) const
-        {
-            if (m_container->m_type == TypeList) {
-                print_list(o, level);
-            } else {
-                print_array(o);
-            }
-        }
-
-        void print_list(std::ostream& o, size_t level) const
+        virtual void print(std::ostream& o, size_t level) const
         {
             string_type ident_p(level * 4, ' ');
             string_type ident_c((level+1) * 4, ' ');
-            o << "(\n";
-            for(size_t i=0; i<m_properties.size(); i++) {
-                if (i > 0)
-                    o << ident_c << ",\n";
-                o << ident_c;
-                m_properties[i]->print(o, level+1);
-                o << "\n";
+            if(m_properties.empty()) {
+                o << "()";
+            } else {
+                o << "(\n";
+                for(size_t i=0; i<m_properties.size(); i++) {
+                    if (i > 0)
+                        o << ident_c << ",\n";
+                    o << ident_c;
+                    m_properties[i]->print(o, level+1);
+                    o << "\n";
+                }
+                o << ident_p << ")";
             }
-            o << ident_p << ")";
-        }
-
-        void print_array(std::ostream& o) const
-        {
-            o << "[";
-            for(size_t i = 0; i<m_properties.size(); i++) {
-                if (i>0)
-                    o  << ", ";
-                m_properties[i]->print(o, 0);
-            }
-            o << "]";
-        }
-
-        basic_setting& at(const string_type& path)
-        {
-            throw _not_found_ex(path);
         }
 
         basic_setting& at(size_t index)
@@ -870,12 +988,7 @@ private:
             return index < m_properties.size();
         }
 
-        bool exists(const string_type &path) const
-        {
-            return false;
-        }
-
-        basic_setting& add(const basic_setting& value)
+        virtual basic_setting& add(const basic_setting& value)
         {
             value_ptr v(new value_type(value));
             v->m_parent = m_container;
@@ -907,9 +1020,70 @@ private:
             return m_properties.size();
         }
 
+    protected:
         basic_setting* m_container;
         std::vector<value_ptr> m_properties;
         boost::regex rx_index;
+    };
+
+    class _basic_setting_array : public _basic_setting_list
+    {
+
+    public:
+        typedef basic_setting<char_type> value_type;
+
+        _basic_setting_array(basic_setting* container,
+                             const std::vector<value_type>& values = std::vector<value_type>())
+            : _basic_setting_list(container, values),
+              m_type(TypeArray)
+        {
+            if (!values.empty()) {
+                if (!values.front().isScalar()) {
+                    throw _type_ex("Array elements must be scalar values");
+                }
+                m_type = values.front().getType();
+            }
+
+            for(size_t i=1; i<values.size(); i++) {
+                if (values[i].getType() != m_type) {
+                    throw _type_ex("Array elements do not have same type");
+                }
+            }
+        }
+
+        _basic_setting* clone(basic_setting *new_container)
+        {
+            _basic_setting_array* item = new _basic_setting_array(new_container);
+            for(size_t i=0; i<this->m_properties.size(); i++) {
+                item->add(*this->m_properties[i]);
+            }
+            return item;
+        }
+
+        basic_setting& add(const basic_setting& value)
+        {
+            if(!value.isScalar()) {
+                throw _type_ex("Array elements must be scalar values");
+            }
+            if (this->size() != 0 && this->at(0).getType() != value.getType()) {
+                throw _type_ex("Array elements must have same type");
+            }
+            return _basic_setting_list::add(value);
+        }
+
+        void print(std::ostream& o, size_t) const
+        {
+            o << "[";
+            for(size_t i = 0; i < this->m_properties.size(); i++) {
+                if (i>0)
+                    o  << ", ";
+                this->m_properties[i]->print(o, 0);
+            }
+            o << "]";
+        }
+
+    private:
+        typename value_type::Type m_type;
     };
 
     class _basic_setting_container : public _basic_setting
@@ -950,18 +1124,23 @@ private:
             string_type ident_p(level * 4, ' ');
             size_t level_c = complex ? level + 1 : level;
             string_type ident_c(level_c * 4, ' ');
-            if (complex)
-                o << "{\n";
 
-            typename std::map<string_type, value_ptr>::const_iterator it = m_mapping.begin();
-            for(; it != m_mapping.end(); ++it)
-            {
-                o << ident_c;
-                it->second->print(o, level_c);
-                o << ";\n";
+            if(m_mapping.empty()) {
+                o << "{}";
+            } else {
+                if (complex)
+                    o << "{\n";
+
+                typename std::map<string_type, value_ptr>::const_iterator it = m_mapping.begin();
+                for(; it != m_mapping.end(); ++it)
+                {
+                    o << ident_c;
+                    it->second->print(o, level_c);
+                    o << ";\n";
+                }
+                if (complex)
+                    o << ident_p << "}";
             }
-            if (complex)
-                o << ident_p << "}";
         }
 
         _basic_setting* clone(basic_setting *new_container)
@@ -1010,12 +1189,12 @@ private:
 
         basic_setting& add(const basic_setting& value)
         {
-            if (m_mapping.count(value.name())) {
-                throw _name_ex(value.name() + " already exists");
+            if (m_mapping.count(value.getName())) {
+                throw _name_ex(value.getName() + " already exists");
             }
             value_ptr v(new value_type(value));
             v->m_parent = m_container;
-            m_mapping.insert(std::make_pair(value.name(), v));
+            m_mapping.insert(std::make_pair(value.getName(), v));
             return *v;
         }
 
@@ -1023,14 +1202,15 @@ private:
         {
             if (m_mapping.count(property)) {
                 m_mapping.erase(property);
+            } else {
+                throw _not_found_ex(property);
             }
-            throw _not_found_ex(property);
         }
 
         void remove(size_t index)
         {
             const basic_setting& setting = at(index);
-            m_mapping.erase(setting.name());
+            m_mapping.erase(setting.getName());
         }
 
         int indexOf(const basic_setting &child) const
@@ -1056,13 +1236,21 @@ private:
     template<typename T>
     class _basic_setting_scalar : public _basic_setting
     {
+        _basic_setting_scalar(const _basic_setting_scalar& other)
+            : m_value(other.m_value),
+              m_format(other.format())
+        {
+        }
+
     public:
         _basic_setting_scalar()
-            : m_value(T())
+            : m_value(T()),
+              m_format(FormatDefault)
         {}
 
         _basic_setting_scalar(const T& value)
-            : m_value(value)
+            : m_value(value),
+              m_format(FormatDefault)
         {}
 
         _basic_setting* clone(basic_setting *new_container)
@@ -1074,15 +1262,32 @@ private:
         {
             const _basic_setting_scalar<T>& o = static_cast<const _basic_setting_scalar<T>& >(other);
 
-            const T& lhs = boost::any_cast<T>(m_value);
-            const T& rhs = boost::any_cast<T>(o.m_value);
+            const T& lhs = boost::any_cast<const T&>(m_value);
+            const T& rhs = boost::any_cast<const T&>(o.m_value);
 
             return lhs == rhs;
         }
 
         void print(std::ostream& o, size_t) const
         {
-            o << boost::any_cast<T>(m_value);
+            Type type = _deduce_scalar_type(T());
+            if ((type == TypeInt || type == TypeInt64) && m_format == FormatHex) {
+                o << "0x" << std::hex;
+            }
+
+            switch(type)
+            {
+            case TypeInt64:
+                o << boost::any_cast<T>(m_value) << "L";
+                break;
+            case TypeString:
+                o << '"' << boost::any_cast<T>(m_value) << '"';
+                break;
+            default:
+                o << boost::any_cast<T>(m_value);
+            }
+
+            o << std::dec;
         }
 
         void lookupValue(bool& result)
@@ -1108,6 +1313,23 @@ private:
             }
         }
 
+        void assignValue(bool value)
+        {
+            switch(_deduce_scalar_type(T())) {
+            case TypeBoolean:
+                m_value = boost::any(value);
+                break;
+            case TypeInt:
+                m_value = boost::any(1);
+                break;
+            case TypeInt64:
+                m_value = boost::any(1L);
+                break;
+            default:
+                throw _type_ex("Conversion not possible");
+            }
+        }
+
         void lookupValue(int& result)
         {
             switch(_deduce_scalar_type(T())) {
@@ -1126,6 +1348,26 @@ private:
             }
             default:
                 throw _type_ex("unsupported conversion");
+            }
+        }
+
+        void assignValue(int value)
+        {
+            switch(_deduce_scalar_type(T())) {
+            case TypeBoolean:
+                m_value = boost::any(static_cast<bool>(value));
+                break;
+            case TypeInt:
+                m_value = boost::any(value);
+                break;
+            case TypeInt64:
+                m_value = boost::any(static_cast<long>(value));
+                break;
+            case TypeFloat:
+                m_value = boost::any(static_cast<float>(value));
+                break;
+            default:
+                throw _type_ex("Conversion not possible");
             }
         }
 
@@ -1175,6 +1417,26 @@ private:
             }
         }
 
+        void assignValue(long value)
+        {
+            switch(_deduce_scalar_type(T())) {
+            case TypeBoolean:
+                m_value = boost::any(static_cast<bool>(value));
+                break;
+            case TypeInt:
+                m_value = boost::any(static_cast<int>(value));
+                break;
+            case TypeInt64:
+                m_value = boost::any(value);
+                break;
+            case TypeFloat:
+                m_value = boost::any(static_cast<float>(value));
+                break;
+            default:
+                throw _type_ex("Conversion not possible");
+            }
+        }
+
         void lookupValue(unsigned long& result)
         {
             switch(_deduce_scalar_type(T())) {
@@ -1189,6 +1451,7 @@ private:
                 } else {
                     throw _type_ex("negative value");
                 }
+                break;
             }
             default:
                 throw _type_ex("unsupported conversion");
@@ -1215,6 +1478,23 @@ private:
             }
         }
 
+        void assignValue(float value)
+        {
+            switch(_deduce_scalar_type(T())) {
+            case TypeInt:
+                m_value = boost::any(static_cast<int>(value));
+                break;
+            case TypeInt64:
+                m_value = boost::any(static_cast<long>(value));
+                break;
+            case TypeFloat:
+                m_value = boost::any(value);
+                break;
+            default:
+                throw _type_ex("Conversion not possible");
+            }
+        }
+
         void lookupValue(double& result)
         {
             switch(_deduce_scalar_type(T())) {
@@ -1225,6 +1505,7 @@ private:
                 float t;
                 lookupValue(t);
                 result = t;
+                break;
             default:
                 throw _type_ex("unsupported conversion");
             }
@@ -1242,7 +1523,29 @@ private:
             }
         }
 
+        void assignValue(const string_type& value)
+        {
+            switch(_deduce_scalar_type(T())) {
+            case TypeString:
+                m_value = boost::any(value);
+                break;
+            default:
+                throw _type_ex("Conversion not possible");
+            }
+        }
+
+        Format format() const
+        {
+            return m_format;
+        }
+
+        void set_format(Format f)
+        {
+            m_format = f;
+        }
+
         boost::any m_value;
+        Format m_format;
     };
 
     static void _check_path(const string_type& path)
@@ -1316,28 +1619,26 @@ public:
     {}
 
     explicit basic_config(const char *path)
-        : value_type(""),
+        : value_type(_read_file(path)),
           m_include_dir(boost::filesystem::current_path().generic_string())
     {
-        value_type::operator =(_read_file(path));
     }
 
     explicit basic_config(const string_type& path)
-        : value_type(""),
+        : value_type(_read_file(path)),
           m_include_dir(boost::filesystem::current_path().generic_string())
     {
-        value_type::operator =(_read_file(path));
     }
 
     void readFile(const string_type& path)
     {
-        value_type::operator =(_read_file(path));
+        value_type::operator =(_read_file(path, m_include_dir));
     }
 
     void writeFile(const string_type& path)
     {
         string_type _path = _construct_path(path, m_include_dir);
-        std::basic_ostream<char_type> ofs(_path);
+        std::basic_ofstream<char_type> ofs(_path.c_str());
         if (ofs) {
             ofs << *this;
         } else {
@@ -1355,7 +1656,12 @@ public:
         return m_include_dir;
     }
 
-    basic_setting<char_type>& getRoot() const
+    const basic_setting<char_type>& getRoot() const
+    {
+        return *this;
+    }
+
+    basic_setting<char_type>& getRoot()
     {
         return *this;
     }
@@ -1366,18 +1672,43 @@ private:
     typedef std::vector<token> token_array;
     typedef typename token_array::const_iterator token_iterator;
     typedef boost::shared_ptr<string_type> string_ptr;
-    typedef std::vector<string_ptr> files_list;
 
     string_type m_include_dir;
 
-    class __basic_setting_list: public value_type
+    class _basic_setting : public value_type
     {
     public:
-        __basic_setting_list(const string_type &name, const value_array& values,
-                             typename value_type::Type type)
-            : value_type(name, values, type)
+        _basic_setting(typename value_type::Type type)
+            : value_type("", type)
         {}
+        _basic_setting(const string_type& name, typename value_type::Type type = value_type::TypeGroup)
+            : value_type(name, type)
+        {}
+        _basic_setting(const _basic_setting& other)
+            : value_type(other)
+        {}
+        _basic_setting& operator=(const _basic_setting& other)
+        {
+            if (this != &other) {
+                value_type::operator =(other);
+            }
+            return *this;
+        }
+
+        template<typename T>
+        _basic_setting& operator=(const T& value)
+        {
+            value_type::operator =(value);
+            return *this;
+        }
+
+        value_type& add(const _basic_setting &setting)
+        {
+            return value_type::add(setting);
+        }
     };
+
+    typedef std::vector<_basic_setting> _basic_setting_array;
 
     class token : public string_type
     {
@@ -1657,7 +1988,7 @@ private:
 
             _path = _construct_path(_remove_quotes(_path), m_include_directory);
 
-            files_list files;
+            std::vector<string_ptr> files;
 
             size_t delimiter = _path.find_last_of('/');
             if (delimiter == string_type::npos) {
@@ -1756,19 +2087,20 @@ private:
         return result;
     }
 
-    value_type _read_file(const string_type& path)
+    _basic_setting _read_file(const string_type& path, const string_type& include_dir =
+            boost::filesystem::current_path().generic_string())
     {
         using namespace boost::filesystem;
-        value_type root("");
-        string_type _path = _construct_path(path, m_include_dir);
+        _basic_setting root("");
+        string_type _path = _construct_path(path, include_dir);
 
-        parser p(string_ptr(new string_type(_path)), m_include_dir, 0);
+        parser p(string_ptr(new string_type(_path)), include_dir, 0);
         token_array tokens = p.parse();
         if (!tokens.empty()) {
             tokens = _concat_string(tokens);
             token_iterator begin = tokens.begin();
             token_iterator end = tokens.end();
-            value_array settings = _get_setting_list(begin, end);
+            _basic_setting_array settings = _get_setting_list(begin, end);
             for (size_t i = 0; i < settings.size(); i++) {
                 root.add(settings[i]);
             }
@@ -1776,9 +2108,9 @@ private:
         return root;
     }
 
-    value_array _get_setting_list(token_iterator& begin, token_iterator& end)
+    _basic_setting_array _get_setting_list(token_iterator& begin, token_iterator& end)
     {
-        value_array settings;
+        _basic_setting_array settings;
         while(begin != end) {
             token tok = *begin++;
             if(tok == "[" || tok == "]") {
@@ -1794,7 +2126,7 @@ private:
         return settings;
     }
 
-    value_type _get_setting(const token& identifier, token_iterator& begin, token_iterator& end)
+    _basic_setting _get_setting(const token& identifier, token_iterator& begin, token_iterator& end)
     {
         if (begin != end) {
             token tok = *begin++;
@@ -1802,19 +2134,19 @@ private:
                 if (begin != end) {
                     tok = *begin;
                     if (tok == "{") {
-                        value_type result = _get_group(identifier, begin, end);
+                        _basic_setting result = _get_group(identifier, begin, end);
                         begin = _skip_end(begin, end);
                         return result;
                     } else if (tok == "(") {
-                        value_type result = _get_list(identifier, begin, end);
+                        _basic_setting result = _get_list(identifier, begin, end);
                         begin = _skip_end(begin, end);
                         return result;
                     } else if (tok == "[") {
-                        value_type result = _get_array(identifier, begin, end);
+                        _basic_setting result = _get_array(identifier, begin, end);
                         begin = _skip_end(begin, end);
                         return result;
                     } else {
-                        value_type result = _get_scalar_item(identifier, *begin++);
+                        _basic_setting result = _get_scalar_item(identifier, *begin++);
                         begin = _skip_end(begin, end);
                         return result;
                     }
@@ -1829,7 +2161,7 @@ private:
         }
     }
 
-    value_type _get_group(const token& identifier, token_iterator& begin, token_iterator& end)
+    _basic_setting _get_group(const token& identifier, token_iterator& begin, token_iterator& end)
     {
         token_iterator _begin = begin;
         token_iterator _end = _find_pair("{", "}", _begin++, end);
@@ -1839,8 +2171,8 @@ private:
             ++begin;
         }
 
-        value_type result(static_cast<string_type>(identifier));
-        value_array settings = _get_setting_list(_begin, _end);
+        _basic_setting result(static_cast<string_type>(identifier));
+        _basic_setting_array settings = _get_setting_list(_begin, _end);
 
         for(size_t i=0; i<settings.size(); i++) {
             result.add(settings[i]);
@@ -1848,7 +2180,7 @@ private:
         return result;
     }
 
-    value_type _get_list(const token& identifier, token_iterator& begin, token_iterator& end)
+    _basic_setting _get_list(const token& identifier, token_iterator& begin, token_iterator& end)
     {
         token_iterator _begin = begin;
         token_iterator _end = _find_pair("(", ")", _begin, end);
@@ -1858,20 +2190,20 @@ private:
             ++begin;
         }
 
-        std::vector<basic_setting<char_type> > values;
+        _basic_setting list(string_type(identifier), value_type::TypeList);
 
         token_iterator _last = _begin;
         while(_begin != _end) {
             _last = ++_begin;
             _begin = _find_list_item(_begin, _end);
             if(_last != _begin)
-                values.push_back(_get_list_item(_last, _begin));
+                list.add(_get_list_item(_last, _begin));
         };
 
-        return __basic_setting_list(identifier, values, value_type::TypeList);
+        return list;
     }
 
-    value_type _get_array(const token& identifier, token_iterator& begin, token_iterator& end)
+    _basic_setting _get_array(const token& identifier, token_iterator& begin, token_iterator& end)
     {
         token_iterator _begin = begin;
         token_iterator _end = _find_pair("[", "]", _begin, end);
@@ -1881,20 +2213,20 @@ private:
             ++begin;
         }
 
-        value_array values;
+        _basic_setting array(identifier, value_type::TypeArray);
 
         token_iterator _last = begin;
         while(_begin != _end) {
             _last = ++_begin;
             _begin = _find_list_item(_begin, _end);
             if (_last != _begin)
-                values.push_back(_get_list_item(_last, _begin));
+                array.add(_get_list_item(_last, _begin));
         };
 
-        return __basic_setting_list(identifier, values, value_type::TypeArray);
+        return array;
     }
 
-    value_type _get_list_item(token_iterator begin, token_iterator end)
+    _basic_setting _get_list_item(token_iterator begin, token_iterator end)
     {
         BOOST_ASSERT(begin != end);
         token tok = *begin;
@@ -1941,7 +2273,7 @@ private:
         }
     }
 
-    value_type _get_scalar_item(const token& name, const token& value)
+    _basic_setting _get_scalar_item(const token& name, const token& value)
     {
         using namespace std;
         using namespace boost;
@@ -1949,48 +2281,55 @@ private:
         regex rx_hex("^0[Xx][0-9A-Fa-f]+$");
         regex rx_hex64("^0[Xx][0-9A-Fa-f]+L(L)?$");
 
-        switch(_get_scalar_type(value))
+        typename value_type::Type type = _get_scalar_type(value);
+        _basic_setting setting(name, type);
+        istringstream iss(value);
+
+        switch(type)
         {
         case value_type::TypeString:
-        {
-            string_type _value = value;
-            return value_type(name, _value);
-        }
+            setting = _remove_quotes(value);
+            break;
         case value_type::TypeBoolean:
         {
-            istringstream iss(value);
             bool v;
             iss >> v;
-            return value_type(name, v);
+            setting = v;
+            break;
         }
         case value_type::TypeInt:
         {
-            istringstream iss(value);
             int v;
-            if (regex_match(value, rx_hex))
+            if (regex_match(value, rx_hex)) {
+                setting.setFormat(value_type::FormatHex);
                 iss >> hex;
+            }
             iss >> v;
-            return value_type(name, v);
+            setting = v;
+            break;
         }
         case value_type::TypeInt64:
         {
-            istringstream iss(value);
             long v;
-            if (regex_match(value, rx_hex64))
+            if (regex_match(value, rx_hex64)) {
+                setting.setFormat(value_type::FormatHex);
                 iss >> hex;
+            }
             iss >> v;
-            return value_type(name, v);
+            setting = v;
+            break;
         }
         case value_type::TypeFloat:
         {
-            istringstream iss(value);
             float v;
             iss >> v;
-            return value_type(name, v);
+            setting = v;
+            break;
         }
         default:
             throw _syntax_exception("invalid value " + value, value);
         }
+        return setting;
     }
 
     token_iterator _skip_end(token_iterator& begin, token_iterator& end)
