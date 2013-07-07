@@ -25,6 +25,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/static_assert.hpp>
