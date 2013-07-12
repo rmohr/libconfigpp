@@ -18,10 +18,14 @@
 # You should have received a copy of the GNU General Lesser License
 # along with libconfigpp.  If not, see <http://www.gnu.org/licenses/>.
 
-ACLOCAL_AMFLAGS   = -I m4
+TESTS = simple_test test_runner
+noinst_PROGRAMS = simple_test test_runner
+simple_test_LDFLAGS = -lboost_system
+simple_test_CPPFLAGS = -I$(top_srcdir)/include
+simple_test_SOURCES = simple_test.cpp
 
-SUBDIRS = . include tests
+test_runner_LDFLAGS = -lboost_system -lboost_unit_test_framework -lboost_filesystem -lboost_regex
+test_runner_CPPFLAGS = -I$(top_srcdir)/include
+test_runner_SOURCES = test_runner.cpp
 
-DIST_SUBDIRS = $(SUBDIRS)
-
-EXTRA_DIST = ChangeLog README.md aclocal.m4 COPYING COPYING.LESSER
+EXTRA_DIST = simple_config.cfg
